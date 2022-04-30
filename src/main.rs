@@ -13,7 +13,10 @@ use webpage::{Webpage, WebpageOptions};
 static P: f64 = 2.0;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "example", about = "An example of StructOpt usage.")]
+#[structopt(
+    name = "vboo",
+    about = "extended boolean model retrieval over a webpage"
+)]
 struct Opt {
     /// Set query op
     #[structopt(short, long, default_value = "or")]
