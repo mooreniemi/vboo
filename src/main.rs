@@ -1,16 +1,12 @@
-use ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2};
+use ndarray::{Array, Array1, Array2};
+use ranking::{op::Op, rank::rank};
 use rust_stemmers::{Algorithm, Stemmer};
-use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap, HashSet},
-    str::FromStr,
-};
+use std::collections::{HashMap, HashSet};
 use structopt::StructOpt;
 use unicode_segmentation::UnicodeSegmentation;
 use webpage::{Webpage, WebpageOptions};
 
-/// p for p-norm
-static P: f64 = 2.0;
+mod ranking;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -52,7 +48,7 @@ fn main() -> Result<(), &'static str> {
     let mut inverted_idx: HashMap<String, Vec<(usize, usize)>> = HashMap::new();
     for (idx, sent) in sents.iter().enumerate() {
         let words = sent.unicode_words().collect::<Vec<&str>>();
-        //-------------------------term  , freq
+        //-----------------------------term  , freq
         let mut stemmed_words: HashMap<String, usize> = HashMap::new();
         for word in words.iter() {
             let sword = en_stemmer.stem(word.to_lowercase().as_str()).to_string();
@@ -114,92 +110,6 @@ fn main() -> Result<(), &'static str> {
     }
 
     Ok(())
-}
-
-#[derive(Debug)]
-struct RankResult {
-    doc_id: usize,
-    score: f64,
-}
-
-impl PartialEq for RankResult {
-    fn eq(&self, other: &Self) -> bool {
-        self.score.eq(&other.score)
-    }
-}
-
-impl Eq for RankResult {}
-
-impl PartialOrd for RankResult {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // reverse order for min heap behavior during ranking
-        other.score.partial_cmp(&self.score)
-    }
-}
-
-impl Ord for RankResult {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-fn rank(query: &ArrayView1<f64>, dt_matrix: &ArrayView2<f64>, op: Op) -> BinaryHeap<RankResult> {
-    // dbg!(query.dim(), dt_matrix.dim());
-    // this just preallocates memory for the heap, doesn't enforce max len
-    let mut topk: BinaryHeap<RankResult> = BinaryHeap::with_capacity(10);
-    for (doc_id, doc) in dt_matrix.rows().into_iter().enumerate() {
-        let score = match op {
-            Op::AND => and(&query, &doc),
-            Op::OR => or(&query, &doc),
-        };
-        if let Some(min) = topk.peek() {
-            if score.gt(&min.score) {
-                if topk.len().eq(&10) {
-                    topk.pop();
-                }
-                let rr = RankResult { doc_id, score };
-                topk.push(rr);
-            }
-        } else {
-            let rr = RankResult { doc_id, score };
-            topk.push(rr);
-        }
-    }
-    topk
-}
-
-#[derive(Debug, PartialEq)]
-enum Op {
-    AND,
-    OR,
-}
-
-impl FromStr for Op {
-    type Err = String;
-
-    fn from_str(input: &str) -> Result<Op, Self::Err> {
-        match input {
-            "or" => Ok(Op::OR),
-            "and" => Ok(Op::AND),
-            _ => Err("unsupported ranking operation".to_string()),
-        }
-    }
-}
-
-/// sqrt((w1^2 + w2^2)/p=2)
-fn or(a: &ArrayView1<f64>, b: &ArrayView1<f64>) -> f64 {
-    assert!(a.dim().eq(&b.dim()));
-    let c = a * b;
-    let c = c.map(|e| e.powf(P));
-    (c.sum() / a.dim() as f64).sqrt()
-}
-
-/// 1 - sqrt(((1-w1)^2 + (1-w2)^2)/p=2)
-fn and(a: &ArrayView1<f64>, b: &ArrayView1<f64>) -> f64 {
-    assert!(a.dim().eq(&b.dim()));
-    let c = a * b;
-    let d = c.map(|e| (1.0 - e).powf(P));
-    1.0 - (d.sum() / a.dim() as f64).sqrt()
 }
 
 /// removing whitespace and newlines on both ends
