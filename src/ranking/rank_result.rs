@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct RankResult {
     pub doc_id: usize,
     pub score: f64,

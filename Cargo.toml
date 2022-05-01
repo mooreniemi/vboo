@@ -11,4 +11,5 @@ html_parser = "0.6.3"
 webpage = "1.4.0"
 structopt = "0.3"
 rust-stemmers = "^1.0"
-ndarray = "0.15"
+ndarray = { version = "0.15", features = ["rayon", "blas"]}
+rayon = "1.5"
