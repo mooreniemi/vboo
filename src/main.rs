@@ -13,6 +13,8 @@ use structopt::StructOpt;
 use unicode_segmentation::UnicodeSegmentation;
 use webpage::{Webpage, WebpageOptions};
 
+use crate::ranking::rank::rank_parallel_skim;
+
 mod ranking;
 
 #[derive(Debug, StructOpt)]
@@ -95,6 +97,8 @@ fn main() -> Result<(), &'static str> {
     }
     let duration = start.elapsed();
     println!("Generating document x term matrix elapsed: {:?}", duration);
+    // for writing out test data
+    // ndarray_npy::write_npy("/tmp/doc_term_matrix.npy", &doc_term_matrix).expect("wrote out dtm");
 
     let start = Instant::now();
     // processing query like sents for term matching
@@ -110,6 +114,8 @@ fn main() -> Result<(), &'static str> {
             query[tidx] = 1.0;
         }
     }
+    // for writing out test data
+    // ndarray_npy::write_npy("/tmp/query.npy", &query).expect("wrote out q");
     let duration = start.elapsed();
     println!("Embedding query elapsed: {:?}", duration);
 
@@ -121,6 +127,10 @@ fn main() -> Result<(), &'static str> {
 
     // ranking results
     let topkv = rank_parallel(&query.view(), &doc_term_matrix.view(), &opt.op);
+    for (idx, result) in topkv.iter().enumerate() {
+        println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
+    }
+    let topkv = rank_parallel_skim(&query.view(), &doc_term_matrix.view(), &opt.op);
     for (idx, result) in topkv.iter().enumerate() {
         println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
     }
