@@ -162,7 +162,7 @@ mod tests {
 
     use crate::ranking::{
         op::Op,
-        rank::{rank, rank_parallel, rank_parallel_skim},
+        rank::{and, or, rank, rank_parallel, rank_parallel_skim},
     };
 
     #[test]
@@ -177,5 +177,14 @@ mod tests {
         let r = rank(&q.view(), &dtm.view(), &Op::AND).into_sorted_vec();
         assert_eq!(rp.get(0), rps.get(0));
         assert_eq!(rp.get(0), r.get(0));
+    }
+
+    #[test]
+    fn op_vs_op() {
+        let doc: Array1<f64> = read_npy("resources/doc.npy").expect("require test file");
+        assert_eq!(doc.dim(), 293);
+        let q: Array1<f64> = read_npy("resources/query.npy").expect("require test file");
+        assert_eq!(q.dim(), 293);
+        assert_eq!(or(&q.view(), &doc.view()), and(&q.view(), &doc.view()));
     }
 }
