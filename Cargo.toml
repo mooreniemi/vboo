@@ -23,9 +23,9 @@ iai = "0.1"
 lazy_static = "1.4.0"
 
 [[bench]]
-name = "op_vs_op"
+name = "and_vs_or"
 harness = false
 
 [[bench]]
-name = "and"
+name = "and_vs_or_iai"
 harness = false
