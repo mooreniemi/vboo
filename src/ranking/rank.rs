@@ -62,6 +62,7 @@ pub fn rank_parallel_skim(
     let returned = returned
         .into_sorted_vec()
         .iter()
+        .filter(|r| r.score.gt(&0.0))
         .take(K)
         .map(|e| *e)
         .collect();
@@ -103,7 +104,12 @@ pub fn rank_parallel(
     let duration = start.elapsed();
     println!("Time elapsed in rank_parallel() is: {:?}", duration);
 
-    results.iter().take(K).map(|e| *e).collect()
+    results
+        .iter()
+        .filter(|r| r.score.gt(&0.0))
+        .take(K)
+        .map(|e| *e)
+        .collect()
 }
 
 /// given an embedded query and a document x term matrix, rank by vboo op
@@ -130,8 +136,10 @@ pub fn rank(
                 topk.push(rr);
             }
         } else {
-            let rr = RankResult { doc_id, score };
-            topk.push(rr);
+            if score.gt(&0.0) {
+                let rr = RankResult { doc_id, score };
+                topk.push(rr);
+            }
         }
     }
     let duration = start.elapsed();
@@ -142,15 +150,17 @@ pub fn rank(
 /// sqrt((w1^2 + w2^2)/p=2)
 pub fn or(a: &ArrayView1<f32>, b: &ArrayView1<f32>) -> f32 {
     let c = a * b;
-    let c = c.map(|e| e.powf(P));
-    (c.sum() / a.dim() as f32).sqrt()
+    let c = c.map(|e| e.powf(P)).sum();
+    (c / a.dim() as f32).sqrt()
 }
 
 /// 1 - sqrt(((1-w1)^2 + (1-w2)^2)/p=2)
 pub fn and(a: &ArrayView1<f32>, b: &ArrayView1<f32>) -> f32 {
     let c = a * b;
-    // par_map_inplace way worse performance
-    // fastapprox::pow2 worse performance
+    // NOTE: some different things I tried (in both)
+    // - par_map_inplace way worse performance
+    // - fastapprox::pow2 worse performance
+    // - reduce_par way worse performance
     let c = c.map(|e| (1.0 - e).powf(P));
     1.0 - (c.sum() / a.dim() as f32).sqrt()
 }
@@ -185,6 +195,7 @@ mod tests {
         assert_eq!(doc.dim(), 293);
         let q: Array1<f32> = read_npy("resources/query.npy").expect("require test file");
         assert_eq!(q.dim(), 293);
-        assert_eq!(or(&q.view(), &doc.view()), and(&q.view(), &doc.view()));
+        // or will score higher than and
+        assert!(or(&q.view(), &doc.view()) > and(&q.view(), &doc.view()));
     }
 }

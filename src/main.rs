@@ -2,6 +2,7 @@ use ndarray::{Array, Array1, Array2};
 use ranking::{
     op::Op,
     rank::{rank, rank_parallel},
+    scorer::Scorer,
 };
 use rust_stemmers::{Algorithm, Stemmer};
 use std::{
@@ -26,12 +27,18 @@ struct Opt {
     /// Set query op
     #[structopt(short, long, default_value = "or")]
     op: Op,
+    /// Set scorer used to weight terms in document term matrix
+    #[structopt(short, long, default_value = "bm25")]
+    scorer: Scorer,
     /// Set source page
     #[structopt(short, long, default_value = "http://www.rust-lang.org/en-US/")]
     page: String,
     /// Set query string
     #[structopt(short, long, default_value = "rust company support")]
     query: String,
+    /// Recreate test data using current query and page
+    #[structopt(short, long)]
+    fixture: bool,
 }
 
 fn main() -> Result<(), &'static str> {
@@ -84,6 +91,9 @@ fn main() -> Result<(), &'static str> {
     // dbg!(&inverted_idx);
     let tx = inverted_idx.len();
 
+    let avg_sent_len: f32 = sent_lens.iter().sum::<usize>() as f32 / dx as f32;
+    let k = 1.2;
+    let b = 0.75;
     let start = Instant::now();
     // for vector boolean retrieval we need full sparse doc x term matrix
     // each row is a document, each column a term
@@ -92,13 +102,33 @@ fn main() -> Result<(), &'static str> {
         for (postidx, freq) in postings.iter() {
             let tf = *freq as f32 / sent_lens[*postidx] as f32;
             let idf = (sents.len() as f32 / postings.len() as f32).ln();
-            doc_term_matrix[[*postidx, tidx]] = tf * idf;
+            match opt.scorer {
+                Scorer::TFIDF => {
+                    doc_term_matrix[[*postidx, tidx]] = tf * idf;
+                }
+                Scorer::BM25 => {
+                    let bm25 = idf
+                        * (tf * (k + 1.0) / tf
+                            + k * (1.0 - b + b * sent_lens[*postidx] as f32 / avg_sent_len));
+                    // we hack in a scaling factor so we're beneath 1, otherwise AND breaks
+                    doc_term_matrix[[*postidx, tidx]] = bm25 * 0.01;
+                }
+            }
         }
     }
     let duration = start.elapsed();
     println!("Generating document x term matrix elapsed: {:?}", duration);
-    // for writing out test data
-    // ndarray_npy::write_npy("/tmp/doc_term_matrix.npy", &doc_term_matrix).expect("wrote out dtm");
+    if opt.fixture {
+        ndarray_npy::write_npy(
+            format!(
+                "{}/{}",
+                env!("CARGO_MANIFEST_DIR"),
+                "resources/doc_term_matrix.npy"
+            ),
+            &doc_term_matrix,
+        )
+        .expect("wrote out dtm");
+    }
 
     let start = Instant::now();
     // processing query like sents for term matching
@@ -107,39 +137,75 @@ fn main() -> Result<(), &'static str> {
         .unicode_words()
         .map(|w| trim_clean(w))
         .collect::<HashSet<&str>>();
+    let question_stemmed: HashSet<String> = question
+        .iter()
+        .map(|word| en_stemmer.stem(word.to_lowercase().as_str()).to_string())
+        .collect();
     // embedding the query into the term space
     let mut query: Array1<f32> = Array::zeros(tx);
     for (tidx, (term, _postings)) in inverted_idx.iter().enumerate() {
-        if question.contains(&term.as_str()) {
+        if question_stemmed.contains(&term.to_string()) {
             query[tidx] = 1.0;
         }
     }
-    // for writing out test data
-    // ndarray_npy::write_npy("/tmp/query.npy", &query).expect("wrote out q");
+    assert!(
+        query.sum().gt(&0.0),
+        "None of the query terms could be found in the document"
+    );
+    if question.len() as f32 != query.sum() {
+        eprintln!(
+            "Failed to find term in the document ({} != {})",
+            question.len(),
+            query.sum()
+        );
+    }
+    if opt.fixture {
+        ndarray_npy::write_npy(
+            format!("{}/{}", env!("CARGO_MANIFEST_DIR"), "resources/query.npy"),
+            &query,
+        )
+        .expect("wrote out query");
+    }
     let duration = start.elapsed();
     println!("Embedding query elapsed: {:?}", duration);
+    //dbg!(&query);
 
     // just testing out obvious outputs
     //dbg!(&sents[97], &doc_term_matrix.row(97));
-    // for writing out test data
-    // ndarray_npy::write_npy("/tmp/doc.npy", &doc_term_matrix.row(97)).expect("wrote out doc");
-    //let o = or(&query.view(), &doc_term_matrix.row(97));
-    //let a = and(&query.view(), &doc_term_matrix.row(97));
+    if opt.fixture {
+        ndarray_npy::write_npy(
+            format!("{}/{}", env!("CARGO_MANIFEST_DIR"), "resources/doc.npy"),
+            &doc_term_matrix.row(97),
+        )
+        .expect("wrote out doc");
+    }
+    //let o = vboo::ranking::rank::or(&query.view(), &doc_term_matrix.row(97));
+    //let a = vboo::ranking::rank::and(&query.view(), &doc_term_matrix.row(97));
     //dbg!(o, a);
 
     // ranking results
+    println!("\nrank in parallel using {:?}", opt.op);
     let topkv = rank_parallel(&query.view(), &doc_term_matrix.view(), &opt.op);
     for (idx, result) in topkv.iter().enumerate() {
         println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
     }
+    println!(
+        "\nrank in parallel, skimming for top results, using {:?}",
+        opt.op
+    );
     let topkv = rank_parallel_skim(&query.view(), &doc_term_matrix.view(), &opt.op);
     for (idx, result) in topkv.iter().enumerate() {
         println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
     }
+    println!(
+        "\nrank sequentially, skimming for top results, using {:?}",
+        opt.op
+    );
     let topk = rank(&query.view(), &doc_term_matrix.view(), &opt.op);
     let results = topk.into_sorted_vec();
     for (idx, result) in results.iter().enumerate() {
         println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
+        // dbg!(doc_term_matrix.row(result.doc_id));
     }
 
     Ok(())

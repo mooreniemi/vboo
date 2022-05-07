@@ -23,6 +23,7 @@ blas-src = { version = "0.8", features = ["openblas"] }
 openblas-src = { version = "0.10", features = ["cblas", "system"] }
 rayon = "1.5"
 fastapprox = "0.3.0"
+packed_simd = { version = "0.3.6", package = "packed_simd_2" }
 
 [dev-dependencies]
 criterion = "0.3"
