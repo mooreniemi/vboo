@@ -4,6 +4,9 @@
 model](https://en.wikipedia.org/wiki/Extended_Boolean_model) / vector
 boolean retrieval in Rust. Purely for fun.
 
+To run [iai](https://github.com/bheisler/iai) part of `cargo bench`, need
+`valgrind` installed.
+
 # cli
 
 ```

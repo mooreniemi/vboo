@@ -11,13 +11,21 @@ html_parser = "0.6.3"
 webpage = "1.4.0"
 structopt = "0.3"
 rust-stemmers = "^1.0"
-ndarray = { version = "0.15", features = ["rayon", "blas"]}
+ndarray = { version = "0.15", features = ["rayon", "blas"] }
 ndarray-npy = "0.8"
+blas-src = { version = "0.8", features = ["openblas"] }
+openblas-src = { version = "0.10", features = ["cblas", "system"] }
 rayon = "1.5"
 
 [dev-dependencies]
 criterion = "0.3"
+iai = "0.1"
+lazy_static = "1.4.0"
 
 [[bench]]
 name = "op_vs_op"
+harness = false
+
+[[bench]]
+name = "and"
 harness = false
