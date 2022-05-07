@@ -14,20 +14,33 @@ vboo 0.1.0
 extended boolean model retrieval over a webpage
 
 USAGE:
-    vboo [OPTIONS]
+    vboo [FLAGS] [OPTIONS]
 
 FLAGS:
+    -f, --fixture    Recreate test data using current query and page
     -h, --help       Prints help information
     -V, --version    Prints version information
 
 OPTIONS:
-    -o, --op <op>          Set query op [default: or]
-    -p, --page <page>      Set source page [default: http://www.rust-lang.org/en-US/]
-    -q, --query <query>    Set query string [default: rust company support]
+    -o, --op <op>            Set query op [default: or]
+    -p, --page <page>        Set source page [default: http://www.rust-lang.org/en-US/]
+    -q, --query <query>      Set query string [default: rust company support]
+    -s, --scorer <scorer>    Set scorer used to weight terms in document term matrix [default: bm25]
 ```
 
 ## example usage
 
+Basic:
+
 ```
 cargo run -- --op and --query "the rust project receives support from companies through the donation of infrastructure"
+```
+
+Some use of `page` and `scorer`:
+
+```
+cargo run -- --op and --query "spanish square" --page "https://www.gutenberg.org/cache/epub/8442/pg8442.txt" --scorer tfidf
+cargo run -- --op or --query "spanish square" --page "https://www.gutenberg.org/cache/epub/8442/pg8442.txt" --scorer tfidf
+cargo run -- --op or --query "spanish square" --page "https://www.gutenberg.org/cache/epub/8442/pg8442.txt" --scorer bm25
+cargo run -- --op and --query "spanish square" --page "https://www.gutenberg.org/cache/epub/8442/pg8442.txt" --scorer bm25
 ```
