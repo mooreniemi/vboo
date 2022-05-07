@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 #[derive(Debug, Copy, Clone)]
 pub struct RankResult {
     pub doc_id: usize,
-    pub score: f64,
+    pub score: f32,
 }
 
 impl PartialEq for RankResult {

@@ -8,13 +8,13 @@ use vboo::ranking::rank::{and, or};
 extern crate lazy_static;
 
 lazy_static! {
-    static ref DOC: Array1<f64> = read_npy(format!(
+    static ref DOC: Array1<f32> = read_npy(format!(
         "{}/{}",
         env!("CARGO_MANIFEST_DIR"),
         "resources/doc.npy"
     ))
     .expect("require test file");
-    static ref Q: Array1<f64> = read_npy(format!(
+    static ref Q: Array1<f32> = read_npy(format!(
         "{}/{}",
         env!("CARGO_MANIFEST_DIR"),
         "resources/query.npy"
@@ -22,11 +22,11 @@ lazy_static! {
     .expect("require test file");
 }
 
-fn iai_benchmark_and() -> f64 {
+fn iai_benchmark_and() -> f32 {
     and(black_box(&Q.view()), black_box(&DOC.view()))
 }
 
-fn iai_benchmark_or() -> f64 {
+fn iai_benchmark_or() -> f32 {
     or(black_box(&Q.view()), black_box(&DOC.view()))
 }
 

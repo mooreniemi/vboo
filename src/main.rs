@@ -90,8 +90,8 @@ fn main() -> Result<(), &'static str> {
     let mut doc_term_matrix = Array2::zeros((dx, tx));
     for (tidx, (_term, postings)) in inverted_idx.iter().enumerate() {
         for (postidx, freq) in postings.iter() {
-            let tf = *freq as f64 / sent_lens[*postidx] as f64;
-            let idf = (sents.len() as f64 / postings.len() as f64).ln();
+            let tf = *freq as f32 / sent_lens[*postidx] as f32;
+            let idf = (sents.len() as f32 / postings.len() as f32).ln();
             doc_term_matrix[[*postidx, tidx]] = tf * idf;
         }
     }
@@ -108,7 +108,7 @@ fn main() -> Result<(), &'static str> {
         .map(|w| trim_clean(w))
         .collect::<HashSet<&str>>();
     // embedding the query into the term space
-    let mut query: Array1<f64> = Array::zeros(tx);
+    let mut query: Array1<f32> = Array::zeros(tx);
     for (tidx, (term, _postings)) in inverted_idx.iter().enumerate() {
         if question.contains(&term.as_str()) {
             query[tidx] = 1.0;
@@ -121,6 +121,8 @@ fn main() -> Result<(), &'static str> {
 
     // just testing out obvious outputs
     //dbg!(&sents[97], &doc_term_matrix.row(97));
+    // for writing out test data
+    // ndarray_npy::write_npy("/tmp/doc.npy", &doc_term_matrix.row(97)).expect("wrote out doc");
     //let o = or(&query.view(), &doc_term_matrix.row(97));
     //let a = and(&query.view(), &doc_term_matrix.row(97));
     //dbg!(o, a);

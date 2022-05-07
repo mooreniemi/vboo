@@ -5,15 +5,15 @@ use rayon::prelude::*;
 use std::{collections::BinaryHeap, time::Instant};
 
 /// p for p-norm
-static P: f64 = 2.0;
+static P: f32 = 2.0;
 
 /// k of top k results
 static K: usize = 10;
 
 /// given an embedded query and a document x term matrix, rank by vboo op
 pub fn rank_parallel_skim(
-    query: &ArrayView1<f64>,
-    dt_matrix: &ArrayView2<f64>,
+    query: &ArrayView1<f32>,
+    dt_matrix: &ArrayView2<f32>,
     op: &Op,
 ) -> Vec<RankResult> {
     let start = Instant::now();
@@ -73,8 +73,8 @@ pub fn rank_parallel_skim(
 
 /// given an embedded query and a document x term matrix, rank by vboo op
 pub fn rank_parallel(
-    query: &ArrayView1<f64>,
-    dt_matrix: &ArrayView2<f64>,
+    query: &ArrayView1<f32>,
+    dt_matrix: &ArrayView2<f32>,
     op: &Op,
 ) -> Vec<RankResult> {
     let start = Instant::now();
@@ -108,8 +108,8 @@ pub fn rank_parallel(
 
 /// given an embedded query and a document x term matrix, rank by vboo op
 pub fn rank(
-    query: &ArrayView1<f64>,
-    dt_matrix: &ArrayView2<f64>,
+    query: &ArrayView1<f32>,
+    dt_matrix: &ArrayView2<f32>,
     op: &Op,
 ) -> BinaryHeap<RankResult> {
     let start = Instant::now();
@@ -140,19 +140,19 @@ pub fn rank(
 }
 
 /// sqrt((w1^2 + w2^2)/p=2)
-pub fn or(a: &ArrayView1<f64>, b: &ArrayView1<f64>) -> f64 {
-    assert!(a.dim().eq(&b.dim()));
+pub fn or(a: &ArrayView1<f32>, b: &ArrayView1<f32>) -> f32 {
     let c = a * b;
     let c = c.map(|e| e.powf(P));
-    (c.sum() / a.dim() as f64).sqrt()
+    (c.sum() / a.dim() as f32).sqrt()
 }
 
 /// 1 - sqrt(((1-w1)^2 + (1-w2)^2)/p=2)
-pub fn and(a: &ArrayView1<f64>, b: &ArrayView1<f64>) -> f64 {
-    assert!(a.dim().eq(&b.dim()));
+pub fn and(a: &ArrayView1<f32>, b: &ArrayView1<f32>) -> f32 {
     let c = a * b;
-    let d = c.map(|e| (1.0 - e).powf(P));
-    1.0 - (d.sum() / a.dim() as f64).sqrt()
+    // par_map_inplace way worse performance
+    // fastapprox::pow2 worse performance
+    let c = c.map(|e| (1.0 - e).powf(P));
+    1.0 - (c.sum() / a.dim() as f32).sqrt()
 }
 
 #[cfg(test)]
@@ -167,10 +167,10 @@ mod tests {
 
     #[test]
     fn all_rank_same_top_one() {
-        let dtm: Array2<f64> =
+        let dtm: Array2<f32> =
             read_npy("resources/doc_term_matrix.npy").expect("require test file");
         assert_eq!(dtm.dim(), (126, 293));
-        let q: Array1<f64> = read_npy("resources/query.npy").expect("require test file");
+        let q: Array1<f32> = read_npy("resources/query.npy").expect("require test file");
         assert_eq!(q.dim(), 293);
         let rp = rank_parallel(&q.view(), &dtm.view(), &Op::AND);
         let rps = rank_parallel_skim(&q.view(), &dtm.view(), &Op::AND);
@@ -181,9 +181,9 @@ mod tests {
 
     #[test]
     fn op_vs_op() {
-        let doc: Array1<f64> = read_npy("resources/doc.npy").expect("require test file");
+        let doc: Array1<f32> = read_npy("resources/doc.npy").expect("require test file");
         assert_eq!(doc.dim(), 293);
-        let q: Array1<f64> = read_npy("resources/query.npy").expect("require test file");
+        let q: Array1<f32> = read_npy("resources/query.npy").expect("require test file");
         assert_eq!(q.dim(), 293);
         assert_eq!(or(&q.view(), &doc.view()), and(&q.view(), &doc.view()));
     }
