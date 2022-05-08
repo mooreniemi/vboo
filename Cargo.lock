@@ -146,6 +146,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "colored"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3616f750b84d8f0de8a58bda93e08e2a81ad3f523089b05f1dffecab48c6cbd"
+dependencies = [
+ "atty",
+ "lazy_static",
+ "winapi",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -474,6 +485,12 @@ checksum = "671a26f820db17c2a2750743f1dd03bafd15b98c9f30c7c2628c024c05d73397"
 dependencies = [
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "kendalls"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "436c9c679a6ce537e193f9051e7e4ab831f4afff7b4edf8f1b60f7618731b8d6"
 
 [[package]]
 name = "lazy_static"
@@ -1423,10 +1440,12 @@ name = "vboo"
 version = "0.1.0"
 dependencies = [
  "blas-src",
+ "colored",
  "criterion",
  "fastapprox",
  "html_parser",
  "iai",
+ "kendalls",
  "lazy_static",
  "ndarray",
  "ndarray-npy",

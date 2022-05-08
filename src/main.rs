@@ -1,3 +1,4 @@
+use colored::Colorize;
 use ndarray::{Array, Array1, Array2};
 use ranking::{
     op::Op,
@@ -39,6 +40,9 @@ struct Opt {
     /// Recreate test data using current query and page
     #[structopt(short, long)]
     fixture: bool,
+    /// Exhaustively check op rather than use options
+    #[structopt(short, long)]
+    compare: bool,
 }
 
 fn main() -> Result<(), &'static str> {
@@ -51,6 +55,8 @@ fn main() -> Result<(), &'static str> {
     let duration = start.elapsed();
     println!("Downloading page elapsed: {:?}", duration);
     let text = wpage.html.text_content;
+    // in many cases (project gutenberg) it makes sense to remove these entirely
+    let text = text.replace('\n', " ");
 
     let start = Instant::now();
     // process text into sentences
@@ -117,7 +123,10 @@ fn main() -> Result<(), &'static str> {
         }
     }
     let duration = start.elapsed();
-    println!("Generating document x term matrix elapsed: {:?}", duration);
+    println!(
+        "Generating document {} x term {} matrix elapsed: {:?}",
+        dx, tx, duration
+    );
     if opt.fixture {
         ndarray_npy::write_npy(
             format!(
@@ -183,29 +192,53 @@ fn main() -> Result<(), &'static str> {
     //let a = vboo::ranking::rank::and(&query.view(), &doc_term_matrix.row(97));
     //dbg!(o, a);
 
-    // ranking results
-    println!("\nrank in parallel using {:?}", opt.op);
-    let topkv = rank_parallel(&query.view(), &doc_term_matrix.view(), &opt.op);
-    for (idx, result) in topkv.iter().enumerate() {
-        println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
-    }
-    println!(
-        "\nrank in parallel, skimming for top results, using {:?}",
-        opt.op
-    );
-    let topkv = rank_parallel_skim(&query.view(), &doc_term_matrix.view(), &opt.op);
-    for (idx, result) in topkv.iter().enumerate() {
-        println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
-    }
-    println!(
-        "\nrank sequentially, skimming for top results, using {:?}",
-        opt.op
-    );
-    let topk = rank(&query.view(), &doc_term_matrix.view(), &opt.op);
-    let results = topk.into_sorted_vec();
-    for (idx, result) in results.iter().enumerate() {
-        println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
-        // dbg!(doc_term_matrix.row(result.doc_id));
+    if opt.compare {
+        println!("\nrank in parallel using both ops");
+
+        // these are parallel within and so running them at same time won't be faster now
+        let or_val = rank_parallel(&query.view(), &doc_term_matrix.view(), &Op::OR);
+        let and_val = rank_parallel(&query.view(), &doc_term_matrix.view(), &Op::AND);
+
+        let both = or_val.iter().zip(and_val.iter());
+
+        for (idx, (result_or, result_and)) in both.enumerate() {
+            println!("OR: {} - {:?}", &idx, &result_or);
+            highlight(&sents[result_or.doc_id], &question_stemmed, &en_stemmer);
+            println!("AND: {} - {:?}", &idx, &result_and);
+            highlight(&sents[result_and.doc_id], &question_stemmed, &en_stemmer);
+        }
+
+        let correlation = kendalls::tau_b(
+            &or_val.iter().map(|r| r.doc_id).collect::<Vec<usize>>(),
+            &and_val.iter().map(|r| r.doc_id).collect::<Vec<usize>>(),
+        )
+        .unwrap();
+        println!("rank correlation = {:?}", correlation);
+    } else {
+        // ranking results
+        println!("\nrank in parallel using {:?}", opt.op);
+        let topkv = rank_parallel(&query.view(), &doc_term_matrix.view(), &opt.op);
+        for (idx, result) in topkv.iter().enumerate() {
+            println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
+        }
+        println!(
+            "\nrank in parallel, skimming for top results, using {:?}",
+            opt.op
+        );
+        let topkv = rank_parallel_skim(&query.view(), &doc_term_matrix.view(), &opt.op);
+        for (idx, result) in topkv.iter().enumerate() {
+            println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
+        }
+        println!(
+            "\nrank sequentially, skimming for top results, using {:?}",
+            opt.op
+        );
+        let topk = rank(&query.view(), &doc_term_matrix.view(), &opt.op);
+        let results = topk.into_sorted_vec();
+        for (idx, result) in results.iter().enumerate() {
+            println!("{} - {:?} - {}", &idx, &result, &sents[result.doc_id]);
+            // dbg!(doc_term_matrix.row(result.doc_id));
+        }
     }
 
     Ok(())
@@ -218,4 +251,20 @@ fn trim_clean(input: &str) -> &str {
         .or(input.strip_suffix("\n"))
         .unwrap_or(input)
         .trim()
+}
+
+/// highlighting match terms
+fn highlight(text: &str, terms: &HashSet<String>, en_stemmer: &Stemmer) {
+    let colorized: Vec<String> = text
+        .unicode_words()
+        .map(|word| en_stemmer.stem(word.to_lowercase().as_str()).to_string())
+        .map(|w| {
+            if terms.contains(w.as_str()) {
+                w.red().bold().to_string()
+            } else {
+                w.normal().to_string()
+            }
+        })
+        .collect();
+    println!("\"{}\"", colorized.join(" "))
 }
