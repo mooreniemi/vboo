@@ -24,7 +24,13 @@ boolean retrieval in Rust. Purely for fun.
 To run [iai](https://github.com/bheisler/iai) part of `cargo bench`, need
 `valgrind` installed.
 
-# cli
+## stuff you can read on ebm
+
+- http://www.minerazzi.com/tutorials/term-vector-6.pdf
+- https://slideplayer.com/slide/16581216/
+
+
+## cli
 
 ```
 vboo 0.1.0
@@ -46,7 +52,7 @@ OPTIONS:
     -s, --scorer <scorer>    Set scorer used to weight terms in document term matrix [default: bm25]
 ```
 
-## example usage
+### example usage
 
 Basic:
 
@@ -68,10 +74,3 @@ Using `compare`:
 ```
 cargo run -- --query "large should there landlord" --page "https://www.gutenberg.org/files/1400/1400-0.txt" --scorer bm25 --compare
 ```
-
-# some observations
-
-- `or` and `and` often give the same top result, but otherwise `or` will
-  bias towards outlying rare terms
-- the iai output is practically identical for `or` and `and`, but `and` is
-  still generally slower
