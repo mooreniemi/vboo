@@ -8,6 +8,10 @@ use vboo::ranking::rank::{and, or};
 extern crate lazy_static;
 
 lazy_static! {
+    // iai only runs the functions once and is not able to exclude setup code
+    // https://github.com/bheisler/iai/issues/23, https://github.com/bheisler/iai/issues/20
+    // so rather than generate a random vector, just use stored fixtures
+    // in general iai looks to be inactive, so this is just for fun really
     static ref DOC: Array1<f32> = read_npy(format!(
         "{}/{}",
         env!("CARGO_MANIFEST_DIR"),
