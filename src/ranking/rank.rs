@@ -4,7 +4,7 @@ use ndarray::{ArrayView1, ArrayView2};
 use rayon::prelude::*;
 use std::{collections::BinaryHeap, time::Instant};
 
-/// p for p-norm
+/// p for p-norm, if set to 1 or == and
 static P: f32 = 2.0;
 
 /// k of top k results
@@ -167,7 +167,7 @@ pub fn and(a: &ArrayView1<f32>, b: &ArrayView1<f32>) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{Array1, Array2};
+    use ndarray::{array, Array1, Array2};
     use ndarray_npy::read_npy;
 
     use crate::ranking::{
@@ -197,5 +197,47 @@ mod tests {
         assert_eq!(q.dim(), 293);
         // or will score higher than and
         assert!(or(&q.view(), &doc.view()) > and(&q.view(), &doc.view()));
+    }
+
+    #[test]
+    fn or_no_match() {
+        let a = array![0., 0.];
+        let b = array![1., 1.];
+        assert_eq!(0., or(&a.view(), &b.view()));
+    }
+
+    #[test]
+    fn or_one_match() {
+        let a = array![1., 0.];
+        let b = array![1., 1.];
+        assert_eq!(0.70710677, or(&a.view(), &b.view()));
+    }
+
+    #[test]
+    fn or_both_match() {
+        let a = array![1., 1.];
+        let b = array![1., 1.];
+        assert_eq!(1., or(&a.view(), &b.view()));
+    }
+
+    #[test]
+    fn and_no_match() {
+        let a = array![0., 0.];
+        let b = array![1., 1.];
+        assert_eq!(0., and(&a.view(), &b.view()));
+    }
+
+    #[test]
+    fn and_one_match() {
+        let a = array![1., 0.];
+        let b = array![1., 1.];
+        assert_eq!(0.29289323, and(&a.view(), &b.view()));
+    }
+
+    #[test]
+    fn and_both_match() {
+        let a = array![1., 1.];
+        let b = array![1., 1.];
+        assert_eq!(1., and(&a.view(), &b.view()));
     }
 }
