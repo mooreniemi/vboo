@@ -240,4 +240,12 @@ mod tests {
         let b = array![1., 1.];
         assert_eq!(1., and(&a.view(), &b.view()));
     }
+
+    #[test]
+    fn sanity_check() {
+        let a = array![1., 0.];
+        let b = array![1., 1.];
+        // and + or = 1 because they reach same point from opposite quadrants
+        assert_eq!(1., or(&a.view(), &b.view()) + and(&a.view(), &b.view()));
+    }
 }
