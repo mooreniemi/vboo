@@ -17,6 +17,7 @@ USAGE:
     vboo [FLAGS] [OPTIONS]
 
 FLAGS:
+    -c, --compare    Exhaustively check op rather than use options
     -f, --fixture    Recreate test data using current query and page
     -h, --help       Prints help information
     -V, --version    Prints version information
@@ -44,3 +45,16 @@ cargo run -- --op or --query "spanish square" --page "https://www.gutenberg.org/
 cargo run -- --op or --query "spanish square" --page "https://www.gutenberg.org/cache/epub/8442/pg8442.txt" --scorer bm25
 cargo run -- --op and --query "spanish square" --page "https://www.gutenberg.org/cache/epub/8442/pg8442.txt" --scorer bm25
 ```
+
+Using `compare`:
+
+```
+cargo run -- --query "large should there landlord" --page "https://www.gutenberg.org/files/1400/1400-0.txt" --scorer bm25 --compare
+```
+
+# some observations
+
+- `or` and `and` often give the same top result, but otherwise `or` will
+  bias towards outlying rare terms
+- the iai output is practically identical for `or` and `and`, but `and` is
+  still generally slower
