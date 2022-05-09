@@ -3,32 +3,19 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use ndarray::Array1;
 use ndarray_npy::read_npy;
+use ndarray_rand::{rand_distr::Uniform, RandomExt};
 use vboo::ranking::rank::{and, or};
 
-#[macro_use]
-extern crate lazy_static;
-
-lazy_static! {
-    static ref DOC: Array1<f32> = read_npy(format!(
-        "{}/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        "resources/doc.npy"
-    ))
-    .expect("require test file");
-    static ref Q: Array1<f32> = read_npy(format!(
-        "{}/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        "resources/query.npy"
-    ))
-    .expect("require test file");
-}
-
 pub fn criterion_benchmark(c: &mut Criterion) {
+    let q = Array1::random(256, Uniform::<f32>::new(0., 1.));
+    let d = Array1::random(256, Uniform::<f32>::new(0., 1.));
+    // println!("{:8.4}", d);
+
     c.bench_function("or", |b| {
-        b.iter(|| or(black_box(&Q.view()), black_box(&DOC.view())))
+        b.iter(|| or(black_box(&q.view()), black_box(&d.view())))
     });
     c.bench_function("and", |b| {
-        b.iter(|| and(black_box(&Q.view()), black_box(&DOC.view())))
+        b.iter(|| and(black_box(&q.view()), black_box(&d.view())))
     });
 }
 
