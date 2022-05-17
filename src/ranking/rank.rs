@@ -151,7 +151,7 @@ pub fn rank(
 pub fn or(a: &ArrayView1<f32>, b: &ArrayView1<f32>) -> f32 {
     let c = a * b;
     let c = c.map(|e| e.powf(P)).sum();
-    (c / a.dim() as f32).sqrt()
+    (c / a.dim() as f32).powf(1.0 / P)
 }
 
 /// 1 - sqrt(((1-w1)^2 + (1-w2)^2)/p=2)
@@ -162,7 +162,7 @@ pub fn and(a: &ArrayView1<f32>, b: &ArrayView1<f32>) -> f32 {
     // - fastapprox::pow2 worse performance
     // - reduce_par way worse performance
     let c = c.map(|e| (1.0 - e).powf(P));
-    1.0 - (c.sum() / a.dim() as f32).sqrt()
+    1.0 - (c.sum() / a.dim() as f32).powf(1.0 / P)
 }
 
 #[cfg(test)]
